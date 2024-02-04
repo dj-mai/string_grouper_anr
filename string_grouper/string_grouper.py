@@ -9,7 +9,7 @@ from scipy.sparse.csr import csr_matrix
 from scipy.sparse.lil import lil_matrix
 from scipy.sparse.csgraph import connected_components
 from typing import Tuple, NamedTuple, List, Optional, Union
-from sparse_dot_topn_for_blocks import awesome_cossim_topn
+from sparse_dot_topn import sp_matmul_topn
 from topn import awesome_hstack_topn
 from functools import wraps
 
@@ -895,21 +895,23 @@ class StringGrouper(object):
         """Builds the cossine similarity matrix of two csr matrices"""
         right_matrix = right_matrix.transpose()
 
-        if nnz_rows is None:
-            nnz_rows = np.full(left_matrix.shape[0], 0, dtype=np.int32)
+        n_threads = (
+            self._config.number_of_processes
+            if self._config.number_of_processes > 1
+            else None
+        )
 
-        optional_kwargs = {
-            'return_best_ntop': True,
-            'sort': sort,
-            'use_threads': self._config.number_of_processes > 1,
-            'n_jobs': self._config.number_of_processes}
+        result_matrix = sp_matmul_topn(
+            A=left_matrix,
+            B=right_matrix,
+            top_n=self._max_n_matches,
+            threshold=self._config.min_similarity,
+            sort=sort,
+            n_threads=n_threads,
+        )
 
-        return awesome_cossim_topn(
-            left_matrix, right_matrix,
-            self._max_n_matches,
-            nnz_rows,
-            self._config.min_similarity,
-            **optional_kwargs)
+        return result_matrix, np.diff(result_matrix.indptr).max()
+
 
     def _get_matches_list(self,
                           matches: csr_matrix

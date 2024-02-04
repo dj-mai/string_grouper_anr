@@ -1149,9 +1149,7 @@ class StringGrouper(object):
     def _is_series_of_strings(series_to_test: pd.Series) -> bool:
         if not isinstance(series_to_test, pd.Series):
             return False
-        elif series_to_test.to_frame().applymap(
-                    lambda x: not isinstance(x, str)
-                ).squeeze(axis=1).any():
+        if series_to_test.apply(lambda x: not isinstance(x, str)).any():
             return False
         return True
 

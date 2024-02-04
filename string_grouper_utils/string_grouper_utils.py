@@ -68,13 +68,7 @@ def new_group_rep_by_completeness(grouped_data: pd.DataFrame,
     else:
         tested_cols = grouped_data
 
-    def is_notnull_and_not_empty(x):
-        if x == '' or pd.isnull(x):
-            return 0
-        else:
-            return 1
-
-    weights = tested_cols.applymap(is_notnull_and_not_empty).sum(axis=1)
+    weights = (tested_cols.notnull() & tested_cols.ne('')).sum(axis=1)
     return group_rep_transform('idxmax', weights, grouped_data, group_col, record_id_col, record_name_col)
 
 
@@ -141,9 +135,9 @@ def parse_timestamps(timestamps: pd.Series, parserinfo=None, **kwargs) -> pd.Ser
     error_msg += " or datetime datatype or pandas Timestamp datatype or numbers"
     if is_series_of_type(str, timestamps):
         # if any of the strings is not datetime-like raise an exception
-        if timestamps.to_frame().applymap(is_date).squeeze().all():
+        if timestamps.apply(is_date).all():
             # convert strings to numpy datetime64
-            return timestamps.transform(lambda x: parse(x, parserinfo, **kwargs).astimezone(UTC))
+            return timestamps.apply(lambda x: parse(x, parserinfo, **kwargs).astimezone(UTC))
     elif is_series_of_type(type(pd.Timestamp('15-1-2000')), timestamps):
         # convert pandas Timestamps to numpy datetime64
         return timestamps.transform(lambda x: x.to_numpy())
@@ -172,11 +166,9 @@ def is_date(string, parserinfo=None, **kwargs):
 
 
 def is_series_of_type(what: type, series_to_test: pd.Series) -> bool:
-    if series_to_test.to_frame().applymap(
-                lambda x: not isinstance(x, what)
-            ).squeeze().any():
-        return False
-    return True
+    if series_to_test.apply(lambda x: isinstance(x, what)).all():
+        return True
+    return False
 
 
 # The following lines modify and append the kwargs portion of the docstring of dateutil.parser.parse to
